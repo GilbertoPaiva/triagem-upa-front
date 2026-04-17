@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+.DS_Store
+*.log
+
+.env
+.env.local
+.env.*.local
+!.env.production
+
+.vite/
+.idea/
+.vscode/
