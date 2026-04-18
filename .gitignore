@@ -3,12 +3,14 @@ dist/
 dist-ssr/
 .DS_Store
 *.log
+*.zip
 
 .env
 .env.local
 .env.*.local
-!.env.production
+.env.production
 
 .vite/
 .idea/
 .vscode/
+.claude/

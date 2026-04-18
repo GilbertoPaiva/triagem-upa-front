@@ -19,4 +19,24 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Proxy /api calls to the backend in development — evita CORS e garante que
+  // as requisições cheguem mesmo com o backend rodando no Docker.
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        // Remove o header Origin antes de encaminhar ao Spring Boot.
+        // O Chrome envia Origin mesmo em POSTs same-origin, e se o usuário
+        // acessa via 127.0.0.1 o Spring rejeitaria com 403 Invalid CORS request.
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
+      },
+    },
+  },
 })

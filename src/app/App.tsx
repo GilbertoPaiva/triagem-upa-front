@@ -44,6 +44,24 @@ export default function App() {
   const [isModalOpen, setIsModal]   = useState(false);
   const [showAttended, setShowAtt]  = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
+
+  // ── Dark mode ────────────────────────────────────────────────────────────────
+  const [dark, setDark] = useState<boolean>(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
 
   // Form triagem
   const [form, setForm] = useState<{ name: string; priority: Priority }>({
@@ -62,7 +80,15 @@ export default function App() {
       setAttended(h);
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      // Traduz erros genéricos de rede para mensagem amigável
+      if (msg === "Failed to fetch" || msg.includes("NetworkError") || msg.includes("fetch")) {
+        setError("Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 8080.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -122,25 +148,42 @@ export default function App() {
             <h1 className="text-foreground text-lg font-semibold">UPA Central — Mossoró</h1>
             <p className="text-muted-foreground text-sm">Sistema de Triagem · Protocolo de Manchester</p>
           </div>
-          <nav className="flex gap-2">
-            {headerNav.map((nav) => (
-              <button
-                key={nav.value}
-                onClick={() => setPage(nav.value)}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                  page === nav.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {nav.label}
-              </button>
-            ))}
-          </nav>
+          <div className="flex items-center gap-3">
+            <nav className="flex gap-2">
+              {headerNav.map((nav) => (
+                <button
+                  key={nav.value}
+                  onClick={() => setPage(nav.value)}
+                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    page === nav.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {nav.label}
+                </button>
+              ))}
+            </nav>
+
+            {/* Toggle dark / light */}
+            <button
+              onClick={() => setDark((d) => !d)}
+              title={dark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors text-base"
+            >
+              {dark ? "☀️" : "🌙"}
+            </button>
+          </div>
         </div>
         {error && (
-          <div className="px-6 py-2 bg-destructive/10 text-destructive text-sm border-t border-destructive/30">
-            {error}
+          <div className="px-6 py-2 bg-destructive/10 text-destructive text-sm border-t border-destructive/30 flex items-center justify-between gap-4">
+            <span>⚠️ {error}</span>
+            <button
+              onClick={() => { setError(null); refresh(); }}
+              className="shrink-0 px-3 py-1 rounded bg-destructive text-destructive-foreground text-xs hover:opacity-90 transition-opacity"
+            >
+              Tentar novamente
+            </button>
           </div>
         )}
       </header>
@@ -148,8 +191,16 @@ export default function App() {
       {/* ── Main ── */}
       <main className="flex-1 px-6 py-8">
 
+        {/* Loading inicial */}
+        {loading && !error && (
+          <div className="flex items-center justify-center h-48 gap-3 text-muted-foreground text-sm">
+            <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            Conectando ao servidor…
+          </div>
+        )}
+
         {/* ════════════════ PAINEL PÚBLICO ════════════════ */}
-        {page === "queue" && (
+        {!loading && page === "queue" && (
           <>
             {/* Faixa de espera */}
             <div className="mb-10">
@@ -240,7 +291,7 @@ export default function App() {
         )}
 
         {/* ════════════════ PAINEL DO MÉDICO ════════════════ */}
-        {page === "doctor" && (
+        {!loading && page === "doctor" && (
           <div className="max-w-2xl mx-auto">
             <h2 className="text-foreground font-semibold text-xl mb-8">Painel do Médico</h2>
 
@@ -326,7 +377,7 @@ export default function App() {
         )}
 
         {/* ════════════════ TRIAGEM ════════════════ */}
-        {page === "triage" && (
+        {!loading && page === "triage" && (
           <div className="max-w-xl mx-auto">
             <h2 className="text-foreground font-semibold text-xl mb-2">Cadastro de Triagem</h2>
             <p className="text-muted-foreground text-sm mb-8">
